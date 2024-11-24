@@ -25,7 +25,7 @@ class MangaDownloader:
             response.raise_for_status()
             return True
         except requests.RequestException as e:
-            self.logger.error("Failed to verify manga: %s", e)
+            self.logger.error("Failed to verify manga: %s.", e)
             return False
 
     def get_html_content(self, chapter_url: str) -> str:
@@ -35,7 +35,7 @@ class MangaDownloader:
             response.raise_for_status()
             return response.text
         except Exception as e:
-            self.logger.error("Error fetching chapter: %s", e)
+            self.logger.error("Error fetching chapter: %s.", e)
             return None
 
     def download_chapter_images(self, html_content: str, temp_dir: str) -> list[str]:
@@ -46,7 +46,7 @@ class MangaDownloader:
             images = soup.find_all('img', {'class': 'wp-manga-chapter-img'})
 
             if not images:
-                self.logger.warning("No images found in chapter content")
+                self.logger.warning("No images found in chapter content.")
                 return []
 
             # Sort images by their order attribute or ID
@@ -60,7 +60,7 @@ class MangaDownloader:
                     response.raise_for_status()
 
                     if 'image' not in response.headers.get('content-type', ''):
-                        raise ValueError(f"Invalid content type: {response.headers.get('content-type')}")
+                        raise ValueError(f"Invalid content type: {response.headers.get('content-type')}.")
 
                     with open(file_path, 'wb') as f:
                         f.write(response.content)
@@ -68,14 +68,14 @@ class MangaDownloader:
                     if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
                         return file_path
 
-                    raise IOError("File was not written correctly")
+                    raise IOError("File was not written correctly.")
 
                 except Exception as e:
-                    self.logger.warning("Attempt %s/%s failed for image %s: %s", attempt + 1, retry_count, img_url, e)
+                    self.logger.warning("Attempt %s/%s failed for image %s: %s.", attempt + 1, retry_count, img_url, e)
                     if attempt < retry_count - 1:
                         time.sleep(2 ** attempt)
 
-            self.logger.error("Failed to download image after %s attempts: %s", retry_count, img_url)
+            self.logger.error("Failed to download image after %s attempts: %s.", retry_count, img_url)
             return ""
 
         images = extract_image_elements(html_content)
@@ -84,7 +84,7 @@ class MangaDownloader:
         for index, img in enumerate(tqdm(images, desc="Downloading images")):
             img_url = img.get('src', img.get('data-src', '')).strip()
             if not img_url:
-                self.logger.warning("No valid URL found for image %s", index)
+                self.logger.warning("No valid URL found for image %s.", index)
                 continue
 
             file_path = os.path.join(temp_dir, f'image-{index:03d}.jpg')
@@ -92,7 +92,7 @@ class MangaDownloader:
                 image_paths.append(downloaded_path)
 
         if not image_paths:
-            self.logger.error("No images were successfully downloaded")
+            self.logger.error("No images were successfully downloaded.")
             return []
 
         return image_paths

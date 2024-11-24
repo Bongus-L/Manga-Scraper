@@ -2,27 +2,23 @@
 Main script for downloading manga chapters from mangaread.org.
 """
 import os
-import argparse
 import sys
 import time
 import logging
 from src.download_handler import MangaDownloader
 from src.pdf_handler import PDFHandler
 from src.utils import (
-    setup_logging, setup_download_directories,
-    cleanup_temp_directory, cleanup_temp_files
+    setup_logging,
+    setup_download_directories,
+    cleanup_temp_directory,
+    cleanup_temp_files,
+    create_parser
 )
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Download manga chapters from mangaread.org.')
-    parser.add_argument('manga_name', type=str, help='Name of the manga as it appears in the URL.')
-    parser.add_argument('--start', type=int, help='Starting chapter number (default: 1).', default=1)
-    parser.add_argument('--end', type=int, help='Ending chapter number (optional).', default=None)
-    parser.add_argument('--rotate', action='store_true', help='Rotate landscape pages to portrait (optional).')
-    parser.add_argument('--log-level', type=str, choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],
-                        default='INFO', help='Set the logging level.')
-
+    """Main function showing downloader usage."""
+    parser = create_parser()
     args = parser.parse_args()
 
     # Setup logging.
@@ -41,7 +37,7 @@ def main():
     pdf_creator = PDFHandler()
 
     if not downloader.verify_manga_exists():
-        logger.error("Manga '%s' not found at %s", args.manga_name, base_url)
+        logger.error("Manga '%s' not found at %s.", args.manga_name, base_url)
         cleanup_temp_directory(temp_dir)
         sys.exit(1)
 
@@ -50,7 +46,7 @@ def main():
 
     while True:
         if args.end and chapter_num > args.end:
-            logger.info("Reached specified end chapter %s",args.end)
+            logger.info("Reached specified end chapter %s.",args.end)
             break
 
         chapter_url = f"{base_url}chapter-{chapter_num}/"
@@ -58,23 +54,23 @@ def main():
 
         html_content = downloader.get_html_content(chapter_url)
         if not html_content:
-            logger.info("No more chapters found after chapter %s", chapter_num - 1)
+            logger.info("No more chapters found after chapter %s.", chapter_num - 1)
             break
 
         image_paths = downloader.download_chapter_images(html_content, temp_dir)
         if not image_paths:
-            logger.warning("No images found in chapter %s", chapter_num)
+            logger.warning("No images found in chapter %s.", chapter_num)
             break
 
-        logger.info("Found %s images in chapter %s", len(image_paths), chapter_num)
+        logger.info("Found %s images in chapter %s.", len(image_paths), chapter_num)
 
         output_path = os.path.join(manga_dir, f'chapter_{chapter_num:03d}.pdf')
-        if pdf_creator.create_pdf(image_paths, output_path):
-            cleanup_temp_files(image_paths, temp_dir)
-            logger.info("Successfully created PDF: %s", output_path)
+        if pdf_creator.create_pdf(image_paths, output_path, args.rotate):
+            cleanup_temp_files(image_paths)
+            logger.info("Successfully created PDF: %s.", output_path)
             successful_downloads.append(output_path)  # Track successful creation.
         else:
-            logger.error("Failed to create PDF for chapter %s", chapter_num)
+            logger.error("Failed to create PDF for chapter %s.", chapter_num)
             break
 
         chapter_num += 1
@@ -83,22 +79,10 @@ def main():
     # Final cleanup.
     cleanup_temp_directory(temp_dir)
 
-    # Apply post-processing only if we have successful downloads and rotation is requested.
-    if successful_downloads and args.rotate:
-        logger.info("All chapters downloaded. Starting post-processing...")
-        try:
-            # Give a small delay to ensure all files are properly closed.
-            time.sleep(1)
-            pdf_creator.post_processing(manga_dir)
-            logger.info("Post-processing completed successfully.")
-        except Exception as e:
-            logger.error("Error during post-processing: %s", e)
-            logger.info("Post-processing failed, but all chapters were downloaded successfully.")
-
     # Log final summary.
     if successful_downloads:
         logger.info("Successfully downloaded %s chapters.", len(successful_downloads))
-        logger.info("Download completed for chapters %s to %s)", args.start, chapter_num - 1)
+        logger.info("Download completed for chapters %s to %s.", args.start, chapter_num - 1)
     else:
         logger.warning("No chapters were successfully downloaded.")
 

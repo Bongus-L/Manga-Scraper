@@ -2,6 +2,7 @@
 Utility functions for manga downloader.
 """
 import os
+import argparse
 import logging
 import shutil
 from pathlib import Path
@@ -103,9 +104,61 @@ def cleanup_temp_directory(temp_dir: str) -> None:
         logging.error("Failed to clean up temporary directory %s: %s", temp_dir, e)
 
 
-def cleanup_temp_files( image_paths: list[str], temp_dir: str) -> None:
+def cleanup_temp_files( image_paths: list[str]) -> None:
+    """Clean up temporary files."""
     for path in image_paths:
         try:
             os.remove(path)
         except Exception as e:
-            logging.error("Failed to remove temporary file %s: %s", path, e)
+            logging.error("Failed to remove temporary file %s: %s.", path, e)
+
+
+def create_parser() -> argparse.ArgumentParser:
+    """Create and return an ArgumentParser with improved help messages."""
+    parser = argparse.ArgumentParser(
+        description='Download manga from mangaread.org then convert to PDF.',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s one-piece --start 1 --end 10
+  %(prog)s naruto --start 50 --rotate
+  %(prog)s bleach --log-level DEBUG
+        """
+    )
+
+    parser.add_argument(
+        'manga_name',
+        type=str,
+        help='Name of the manga as it appears in the URL (e.g., "one-piece", "naruto")'
+    )
+
+    parser.add_argument(
+        '--start',
+        type=int,
+        default=1,
+        metavar='N',
+        help='Starting chapter number (default: %(default)s)'
+    )
+
+    parser.add_argument(
+        '--end',
+        type=int,
+        metavar='N',
+        help='Ending chapter number (if omitted, downloads until no more chapters found)'
+    )
+
+    parser.add_argument(
+        '--rotate',
+        action='store_true',
+        help='Rotate pages to match Kindle Scribe screen size'
+    )
+
+    parser.add_argument(
+        '--log-level',
+        type=str,
+        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],
+        default='INFO',
+        help='Set the logging level (default: %(default)s)'
+    )
+
+    return parser
