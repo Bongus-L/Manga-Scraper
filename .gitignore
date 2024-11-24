@@ -30,3 +30,6 @@ downloads/
 # Operating System Files
 .DS_Store
 Thumbs.db
+
+# ETC
+.bak
