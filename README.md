@@ -104,7 +104,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-[Add your license information here]
 
 ## Disclaimer
 
