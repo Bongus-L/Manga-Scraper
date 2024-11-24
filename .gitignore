@@ -31,5 +31,5 @@ downloads/
 .DS_Store
 Thumbs.db
 
-# ETC
-.bak
+# Backup files
+*.bak
