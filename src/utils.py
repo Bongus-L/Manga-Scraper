@@ -1,9 +1,11 @@
+"""
+Utility functions for manga downloader.
+"""
 import os
 import logging
 import shutil
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
-
 
 
 def setup_logging(log_level: int = logging.INFO, manga_name: str = None):
@@ -64,32 +66,25 @@ def setup_logging(log_level: int = logging.INFO, manga_name: str = None):
     logging.info(f"Log file location: {log_file}.")
 
 
-def get_download_paths(manga_name: str):
-    """
-    Get the paths for downloads, manga directory, and temporary files.
-
-    Returns:
-        Tuple containing (downloads_dir, manga_dir, temp_dir).
-    """
-    # Get the project root directory.
-    root_dir = Path(__file__).parent.parent
-
-    # Create paths.
-    downloads_dir = os.path.join(root_dir, 'downloads')
-    manga_dir = os.path.join(downloads_dir, manga_name)
-    temp_dir = os.path.join(manga_dir, 'temp')
-
-    return downloads_dir, manga_dir, temp_dir
-
-
-def setup_download_directories(manga_name: str):
+def setup_download_directories(manga_name: str) -> tuple[str, str, str]:
     """
     Create necessary directories for downloading manga.
 
     Returns:
         Tuple containing (downloads_dir, manga_dir, temp_dir).
     """
-    downloads_dir, manga_dir, temp_dir = get_download_paths(manga_name)
+    def get_download_paths() -> tuple[str, str, str]:
+        # Get the project root directory.
+        root_dir = Path(__file__).parent.parent
+
+        # Create paths.
+        downloads_dir = os.path.join(root_dir, 'downloads')
+        manga_dir = os.path.join(downloads_dir, manga_name)
+        temp_dir = os.path.join(manga_dir, 'temp')
+
+        return downloads_dir, manga_dir, temp_dir
+
+    downloads_dir, manga_dir, temp_dir = get_download_paths()
 
     # Create directories.
     os.makedirs(downloads_dir, exist_ok=True)
@@ -99,22 +94,18 @@ def setup_download_directories(manga_name: str):
     return downloads_dir, manga_dir, temp_dir
 
 
-def cleanup_temp_directory(temp_dir: str):
+def cleanup_temp_directory(temp_dir: str) -> None:
     """Clean up temporary directory and its contents."""
     try:
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
     except Exception as e:
-        logging.error(f"Failed to clean up temporary directory {temp_dir}: {e}")
+        logging.error("Failed to clean up temporary directory %s: %s", temp_dir, e)
 
 
-def cleanup_temp_files( image_paths: list[str], temp_dir: str):
-    # First remove individual image files.
+def cleanup_temp_files( image_paths: list[str], temp_dir: str) -> None:
     for path in image_paths:
         try:
             os.remove(path)
         except Exception as e:
-            logging.error(f"Failed to remove temporary file {path}: {e}")
-
-    # Then clean up the entire temp directory.
-    cleanup_temp_directory(temp_dir)
+            logging.error("Failed to remove temporary file %s: %s", path, e)

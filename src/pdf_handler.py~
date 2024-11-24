@@ -3,13 +3,16 @@ PDFHandler class for creating and post-processing PDF files.
 """
 import os
 import logging
-from contextlib import contextmanager
+import time
 import img2pdf
+from PyPDF2 import PdfReader, PdfWriter
+from contextlib import contextmanager
 
 
 class PDFHandler:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
+
 
     @contextmanager
     def _open_pdf_safely(self, path: str, mode: str = 'rb'):
