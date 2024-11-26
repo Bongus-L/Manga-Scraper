@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 class MangaDownloader:
     """
-    Class for downloading manga chapters.
+    Class for downloading manga jpgs.
     """
     def __init__(self, base_url: str):
         self.session = self._create_session()
@@ -49,7 +49,7 @@ class MangaDownloader:
                 self.logger.warning("No images found in chapter content.")
                 return []
 
-            # Sort images by their order attribute or ID
+            # Sort images by their order attribute or ID.
             return sorted(images, key=lambda x: int(x.get('data-order', x.get('id', '0').split('-')[-1])))
 
         def download_single_image(img_url: str, file_path: str, retry_count: int = 3) -> str:

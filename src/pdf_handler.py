@@ -3,25 +3,12 @@ PDFHandler class for creating and post-processing PDF files.
 """
 import os
 import logging
-from contextlib import contextmanager
 import img2pdf
 
 
 class PDFHandler:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-
-    @contextmanager
-    def _open_pdf_safely(self, path: str, mode: str = 'rb'):
-        """Safely open and close PDF files with proper resource management."""
-        file_obj = None
-        try:
-            file_obj = open(path, mode)
-            yield file_obj
-        finally:
-            if file_obj:
-                file_obj.close()
-
 
     def create_pdf(self, image_paths: list[str], output_path: str, combine_portraits: bool = True) -> bool:
         """
@@ -165,7 +152,7 @@ class PDFHandler:
                     i += 1
 
                 except Exception as e:
-                    self.logger.error(f"Error processing image {image_paths[i]}: {e}")
+                    self.logger.error("Error processing image %s: %s.", image_paths[i], e)
                     return False
 
             # Create the PDF
@@ -174,5 +161,5 @@ class PDFHandler:
             return True
 
         except Exception as e:
-            self.logger.error(f"Failed to create PDF: {e}")
+            self.logger.error("Failed to create PDF: %s.", e)
             return False
