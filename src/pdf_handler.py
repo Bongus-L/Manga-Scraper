@@ -1,147 +1,165 @@
-import img2pdf
+"""
+PDFHandler class for creating and post-processing PDF files.
+"""
 import os
 import logging
-import time
-from PyPDF2 import PdfReader, PdfWriter
-from contextlib import contextmanager
+import img2pdf
 
 
 class PDFHandler:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
 
+    def create_pdf(self, image_paths: list[str], output_path: str, combine_portraits: bool = True) -> bool:
+        """
+        Create a PDF file from a list of image files in sequential order.
+        Can combine adjacent portrait images side by side if combine_portraits is True.
+        Single portrait images are resized to maintain consistency.
 
-    @contextmanager
-    def _open_pdf_safely(self, path: str, mode: str = 'rb'):
-        """Safely open and close PDF files with proper resource management."""
-        file_obj = None
-        try:
-            file_obj = open(path, mode)
-            yield file_obj
-        finally:
-            if file_obj:
-                file_obj.close()
+        Args:
+            image_paths (list[str]): List of paths to image files
+            output_path (str): Path where the PDF will be saved
+            combine_portraits (bool): If True, combines adjacent portrait images side by side
 
-
-    def create_pdf(self, image_paths: list[str], output_path: str) -> bool:
-        """Create a PDF file from a list of image files in sequential order."""
+        Returns:
+            bool: True if successful, False otherwise
+        """
         if not image_paths:
             self.logger.warning("No images provided for PDF creation.")
             return False
 
         try:
+            from PIL import Image
+            import numpy as np
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-            # Read all images first
-            image_data = []
-            for path in image_paths:
-                with open(path, 'rb') as img_file:
-                    image_data.append(img_file.read())
+            def resize_single_portrait(img: Image.Image) -> Image.Image:
+                """
+                Resize a single portrait image to fit Kindle Scribe dimensions while maintaining aspect ratio.
+                Centers the image horizontally on a white background.
+                """
+                target_width = 3048  # Kindle Scribe width in pixels
+                target_height = 2160  # Kindle Scribe height in pixels
 
-            # Then write the PDF
-            with open(output_path, 'wb') as pdf_file:
-                pdf_file.write(img2pdf.convert(image_data))
-            return True
-        except Exception as e:
-            self.logger.error(f"Failed to create PDF: {e}")
-            return False
+                # Calculate new dimensions maintaining aspect ratio
+                aspect_ratio = img.height / img.width
+                new_width = target_width // 2  # Use half width like in combined mode
+                new_height = int(new_width * aspect_ratio)
 
+                # If height exceeds target, scale down based on height
+                if new_height > target_height:
+                    new_height = target_height
+                    new_width = int(target_height / aspect_ratio)
 
-    @staticmethod
-    def post_processing(pdf_dir: str):
-        """Post-process PDFs in the specified directory by rotating landscape pages to portrait."""
-        logger = logging.getLogger(__name__)
-        logger.info(f"Starting post-processing in directory: {pdf_dir}")
+                # Resize the image
+                img_resized = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
-        if not os.path.exists(pdf_dir):
-            logger.error(f"Directory not found: {pdf_dir}")
-            return
+                # Create new blank image with white background
+                result = Image.new('RGB', (target_width, target_height), 'white')
 
-        max_retries = 3
-        retry_delay = 2
+                # Calculate position to center the image
+                x = (target_width - new_width) // 2
+                y = (target_height - new_height) // 2
 
-        for filename in os.listdir(pdf_dir):
-            if not filename.endswith('.pdf'):
-                continue
+                # Paste resized image onto blank canvas
+                result.paste(img_resized, (x, y))
+                return result
 
-            pdf_path = os.path.join(pdf_dir, filename)
-            temp_path = f"{pdf_path}.temp"
+            def combine_portrait_images(img1: Image.Image, img2: Image.Image) -> Image.Image:
+                """
+                Combine two portrait images side by side, maintaining Kindle Scribe proportions.
+                Kindle Scribe: 10.2" × 7.2" at 300 PPI (3048 × 2160 pixels)
+                """
+                target_width = 3048  # Kindle Scribe width in pixels
+                target_height = 2160  # Kindle Scribe height in pixels
 
-            for attempt in range(max_retries):
+                # Calculate the new width for each image (half of target width with some padding)
+                single_width = (target_width // 2) - 20  # 10px padding on each side
+
+                # Resize images maintaining aspect ratio
+                def resize_portrait(img: Image.Image) -> Image.Image:
+                    aspect_ratio = img.height / img.width
+                    new_height = int(single_width * aspect_ratio)
+
+                    # If height exceeds target, scale down based on height
+                    if new_height > target_height:
+                        new_height = target_height
+                        new_width = int(target_height / aspect_ratio)
+                    else:
+                        new_width = single_width
+
+                    return img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+                # Resize both images
+                img1_resized = resize_portrait(img1)
+                img2_resized = resize_portrait(img2)
+
+                # Create new blank image with white background
+                combined = Image.new('RGB', (target_width, target_height), 'white')
+
+                # Calculate vertical positions to center images
+                y1 = (target_height - img1_resized.height) // 2
+                y2 = (target_height - img2_resized.height) // 2
+
+                # Calculate horizontal positions with padding
+                x1 = 10  # Left padding for first image
+                x2 = target_width // 2 + 10  # Start second image at midpoint + padding
+
+                # Paste images onto blank canvas
+                combined.paste(img1_resized, (x1, y1))
+                combined.paste(img2_resized, (x2, y2))
+
+                return combined
+
+            # Process images
+            processed_images = []
+            i = 0
+            while i < len(image_paths):
                 try:
-                    # Ensure temp file doesn't exist from previous attempts
-                    if os.path.exists(temp_path):
-                        os.remove(temp_path)
+                    with Image.open(image_paths[i]) as img1:
+                        is_portrait = img1.width < img1.height
 
-                    rotated = False
-                    reader = None
-                    writer = None
+                        # Handle portrait images when combining is enabled
+                        if combine_portraits and is_portrait:
+                            # Check if we have another portrait image to combine with
+                            if i + 1 < len(image_paths):
+                                with Image.open(image_paths[i + 1]) as img2:
+                                    if img2.width < img2.height:
+                                        # Combine the two portrait images
+                                        combined = combine_portrait_images(img1, img2)
+                                        temp_path = f"{output_path}_temp_{i}.jpg"
+                                        combined.save(temp_path, "JPEG", quality=95)
+                                        with open(temp_path, 'rb') as temp_file:
+                                            processed_images.append(temp_file.read())
+                                        os.remove(temp_path)
+                                        i += 2  # Skip next image since we used it
+                                        continue
 
-                    # Process the PDF
-                    with open(pdf_path, 'rb') as pdf_file:
-                        reader = PdfReader(pdf_file)
-                        writer = PdfWriter()
+                            # If we can't combine (no next image or next image is landscape),
+                            # handle single portrait image
+                            temp_path = f"{output_path}_temp_{i}.jpg"
+                            resized = resize_single_portrait(img1)
+                            resized.save(temp_path, "JPEG", quality=95)
+                            with open(temp_path, 'rb') as temp_file:
+                                processed_images.append(temp_file.read())
+                            os.remove(temp_path)
+                            i += 1
+                            continue
 
-                        # Process each page
-                        for page in reader.pages:
-                            width = float(page.mediabox.width)
-                            height = float(page.mediabox.height)
-
-                            if width > height:
-                                page.rotate(90)
-                                rotated = True
-
-                            writer.add_page(page)
-
-                        # Only write if we made changes
-                        if rotated:
-                            with open(temp_path, 'wb') as output_file:
-                                writer.write(output_file)
-
-                    # If we rotated pages, replace the original file
-                    if rotated:
-                        # Close any remaining file handles
-                        if reader:
-                            del reader
-                        if writer:
-                            del writer
-
-                        # Small delay to ensure file handles are released
-                        time.sleep(0.5)
-
-                        try:
-                            # On Windows, sometimes we need to retry the replace operation
-                            for replace_attempt in range(3):
-                                try:
-                                    os.replace(temp_path, pdf_path)
-                                    break
-                                except PermissionError:
-                                    if replace_attempt < 2:
-                                        time.sleep(1)
-                                    else:
-                                        raise
-
-                            logger.info(f"Rotated landscape pages in: {filename}")
-                        except Exception as e:
-                            logger.error(f"Failed to replace file {filename}: {e}")
-                            # If replace fails, try to clean up temp file
-                            if os.path.exists(temp_path):
-                                os.remove(temp_path)
-
-                    # If we got here without errors, break the retry loop
-                    break
+                    # Handle landscape or when combining is disabled
+                    with open(image_paths[i], 'rb') as img_file:
+                        processed_images.append(img_file.read())
+                    i += 1
 
                 except Exception as e:
-                    logger.warning(f"Attempt {attempt + 1}/{max_retries} failed for {filename}: {e}")
-                    if attempt < max_retries - 1:
-                        time.sleep(retry_delay)
-                    else:
-                        logger.error(f"Final error processing {filename}: {e}")
+                    self.logger.error("Error processing image %s: %s.", image_paths[i], e)
+                    return False
 
-                finally:
-                    # Always try to clean up temp file
-                    try:
-                        if os.path.exists(temp_path):
-                            os.remove(temp_path)
-                    except Exception as e:
-                        logger.warning(f"Failed to remove temp file {temp_path}: {e}")
+            # Create the PDF
+            with open(output_path, 'wb') as pdf_file:
+                pdf_file.write(img2pdf.convert(processed_images))
+            return True
+
+        except Exception as e:
+            self.logger.error("Failed to create PDF: %s.", e)
+            return False

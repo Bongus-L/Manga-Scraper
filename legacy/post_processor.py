@@ -1,5 +1,8 @@
-import argparse
+"""
+Main script for post-processing manga PDFs to rotate landscape pages.
+"""
 import logging
+import argparse
 import os
 import re
 from src.pdf_handler import PDFHandler
