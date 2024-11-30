@@ -1,0 +1,14 @@
+{
+    "kindle_scribe": {
+        "width": 3048,
+        "height": 2160,
+        "padding": 10,
+        "jpeg_quality": 95
+    },
+    "kindle_paperwhite": {
+        "width": 1236,
+        "height": 1648,
+        "padding": 8,
+        "jpeg_quality": 95
+    }
+} 
