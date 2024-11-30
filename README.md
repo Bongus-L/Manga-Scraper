@@ -77,15 +77,17 @@ python downloader.py bleach --log-level DEBUG
 
 ```
 manga-downloader/
+├── config/
+│ └── device_config.json # Device-specific configurations
 ├── src/
-│   ├── download_handler.py  # Manages chapter downloads
-│   ├── pdf_handler.py       # Handles PDF creation and optimisation
-│   └── utils.py            # Utility functions and logging setup
-├── downloads/              # Downloaded manga storage (will be auto created)
-├── logs/                  # Log files directory (will be auto created)
-├── requirements.txt       # Project dependencies
-├── README.md             # Project documentation
-└── downloader.py         # Main script
+│ ├── download_handler.py # Manages chapter downloads
+│ ├── pdf_handler.py # Handles PDF creation and optimisation
+│ └── utils.py # Utility functions and logging setup
+├── downloads/ # Downloaded manga storage
+├── logs/ # Log files directory
+├── requirements.txt # Project dependencies
+├── README.md # Project documentation
+└── downloader.py # Main script
 ```
 
 ## Logging System
@@ -104,14 +106,13 @@ The PDF handler includes specific optimisations for e-readers:
 - Adds padding and centres images for optimal viewing
 - Preserves image quality while ensuring reasonable file sizes
 
+## Device Configuration
+
+The tool supports multiple e-reader devices through the `config/device_config.json` file
+
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. When contributing, please:
-- Follow the existing code style
-- Add appropriate error handling
-- Update documentation as needed
-- Add tests for new features
-
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Disclaimer
 
