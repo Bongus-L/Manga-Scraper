@@ -38,47 +38,46 @@ class MangaDownloader:
             self.logger.error("Error fetching chapter: %s.", e)
             return None
 
+    def _extract_image_elements(self, html_content: str) -> list:
+        """Extract and sort image elements from HTML content."""
+        soup = BeautifulSoup(html_content, 'html.parser')
+        images = soup.find_all('img', {'class': 'wp-manga-chapter-img'})
+
+        if not images:
+            self.logger.warning("No images found in chapter content.")
+            return []
+
+        return sorted(images, key=lambda x: int(x.get('data-order', x.get('id', '0').split('-')[-1])))
+
+    def _download_single_image(self, img_url: str, file_path: str, retry_count: int = 3) -> str:
+        """Download a single image with retry logic."""
+        for attempt in range(retry_count):
+            try:
+                response = self.session.get(img_url, timeout=30)
+                response.raise_for_status()
+
+                if 'image' not in response.headers.get('content-type', ''):
+                    raise ValueError(f"Invalid content type: {response.headers.get('content-type')}.")
+
+                with open(file_path, 'wb') as f:
+                    f.write(response.content)
+
+                if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+                    return file_path
+
+                raise IOError("File was not written correctly.")
+
+            except Exception as e:
+                self.logger.warning("Attempt %s/%s failed for image %s: %s.", attempt + 1, retry_count, img_url, e)
+                if attempt < retry_count - 1:
+                    time.sleep(2 ** attempt)
+
+        self.logger.error("Failed to download image after %s attempts: %s.", retry_count, img_url)
+        return ""
+
     def download_chapter_images(self, html_content: str, temp_dir: str) -> list[str]:
         """Download all images from a chapter and save them to the temporary directory."""
-        def extract_image_elements(html_content: str) -> list:
-            """Extract and sort image elements from HTML content."""
-            soup = BeautifulSoup(html_content, 'html.parser')
-            images = soup.find_all('img', {'class': 'wp-manga-chapter-img'})
-
-            if not images:
-                self.logger.warning("No images found in chapter content.")
-                return []
-
-            # Sort images by their order attribute or ID.
-            return sorted(images, key=lambda x: int(x.get('data-order', x.get('id', '0').split('-')[-1])))
-
-        def download_single_image(img_url: str, file_path: str, retry_count: int = 3) -> str:
-            """Download a single image with retry logic."""
-            for attempt in range(retry_count):
-                try:
-                    response = self.session.get(img_url, timeout=30)
-                    response.raise_for_status()
-
-                    if 'image' not in response.headers.get('content-type', ''):
-                        raise ValueError(f"Invalid content type: {response.headers.get('content-type')}.")
-
-                    with open(file_path, 'wb') as f:
-                        f.write(response.content)
-
-                    if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
-                        return file_path
-
-                    raise IOError("File was not written correctly.")
-
-                except Exception as e:
-                    self.logger.warning("Attempt %s/%s failed for image %s: %s.", attempt + 1, retry_count, img_url, e)
-                    if attempt < retry_count - 1:
-                        time.sleep(2 ** attempt)
-
-            self.logger.error("Failed to download image after %s attempts: %s.", retry_count, img_url)
-            return ""
-
-        images = extract_image_elements(html_content)
+        images = self._extract_image_elements(html_content)
         image_paths = []
 
         for index, img in enumerate(tqdm(images, desc="Downloading images")):
@@ -88,7 +87,7 @@ class MangaDownloader:
                 continue
 
             file_path = os.path.join(temp_dir, f'image-{index:03d}.jpg')
-            if downloaded_path := download_single_image(img_url, file_path):
+            if downloaded_path := self._download_single_image(img_url, file_path):
                 image_paths.append(downloaded_path)
 
         if not image_paths:
