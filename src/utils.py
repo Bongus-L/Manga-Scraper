@@ -115,6 +115,7 @@ def cleanup_temp_files( image_paths: list[str]) -> None:
 
 def create_parser() -> argparse.ArgumentParser:
     """Create and return an ArgumentParser with improved help messages."""
+    # TODO: Allow device type arg.
     parser = argparse.ArgumentParser(
         description='Download manga from mangaread.org then convert to PDF.',
         formatter_class=argparse.RawDescriptionHelpFormatter,

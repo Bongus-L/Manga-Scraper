@@ -117,3 +117,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## Disclaimer
 
 This tool is for educational purposes only. Please respect copyright laws and terms of service of the websites you access. Download only content you have the right to access.
+
+## TODO
+
+- Allow device type selection
