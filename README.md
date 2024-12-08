@@ -1,6 +1,6 @@
 # Manga Downloader
 
-A Python-based tool for downloading manga chapters from mangaread.org and converting them to PDF format, optimised for e-readers like Kindle Scribe. The tool features automatic portrait page combining and comprehensive logging.
+A Python-based tool for downloading manga chapters from **mangaread.org** and converting them to PDF format, optimised for e-readers like Kindle Scribe. The tool features automatic portrait page combining and comprehensive logging.
 
 ## Features
 
