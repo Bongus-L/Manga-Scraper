@@ -10,7 +10,9 @@ A Python-based tool for downloading manga chapters from "**https://www.mangaread
   - Combines adjacent portrait pages side by side
   - Automatically resizes single portrait pages
   - Maintains optimal dimensions for Kindle Scribe (3048 × 2160 pixels)
+  - Optional reverse order for combined pages (right-to-left reading)
 - Configurable chapter range downloading
+- Optional buffer page for combined portrait alignment
 - Comprehensive logging system with rotation
 - Automatic cleanup of temporary files
 - Robust retry mechanism for failed downloads
@@ -55,6 +57,16 @@ Enable portrait page combining (recommended for e-readers):
 python downloader.py <manga-name> --rotate
 ```
 
+Reverse the order of combined portrait pages (right-to-left reading):
+```bash
+python downloader.py <manga-name> --rotate --reverse-img-order
+```
+
+Add buffer page for combined portrait alignment:
+```bash
+python downloader.py <manga-name> --rotate --buffer
+```
+
 Set custom logging level:
 ```bash
 python downloader.py <manga-name> --log-level DEBUG
@@ -63,11 +75,11 @@ python downloader.py <manga-name> --log-level DEBUG
 ### Example Commands
 
 ```bash
-# Download One Piece chapters 1-10
-python downloader.py one-piece --start 1 --end 10
+# Download One Piece chapters 1-10 with right-to-left reading
+python downloader.py one-piece --start 1 --end 10 --rotate --reverse-img-order
 
-# Download Naruto with e-reader optimisation
-python downloader.py naruto --rotate
+# Download Naruto with e-reader optimisation and buffer page
+python downloader.py naruto --rotate --buffer
 
 # Download Bleach with debug logging
 python downloader.py bleach --log-level DEBUG

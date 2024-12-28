@@ -34,7 +34,11 @@ def main():
     # todo: make a config.json instead of hard-coding.
     base_url = f"https://www.mangaread.org/manga/{args.manga_name}/"
     downloader = MangaDownloader(base_url)
-    pdf_creator = PDFHandler()
+    pdf_creator = PDFHandler(
+        reverse_order=args.reverse_img_order,
+        combine_portraits=args.rotate,
+        add_buffer=args.buffer
+    )
 
     if not downloader.verify_manga_exists():
         logger.error("Manga '%s' not found at %s.", args.manga_name, base_url)
@@ -65,10 +69,10 @@ def main():
         logger.info("Found %s images in chapter %s.", len(image_paths), chapter_num)
 
         output_path = os.path.join(manga_dir, f'{args.manga_name}_chapter_{chapter_num:03d}.pdf')
-        if pdf_creator.create_pdf(image_paths, output_path, args.rotate):
+        if pdf_creator.create_pdf(image_paths, output_path): 
             cleanup_temp_files(image_paths)
             logger.info("Successfully created PDF: %s.", output_path)
-            successful_downloads.append(output_path)  # Track successful creation.
+            successful_downloads.append(output_path)
         else:
             logger.error("Failed to create PDF for chapter %s.", chapter_num)
             break

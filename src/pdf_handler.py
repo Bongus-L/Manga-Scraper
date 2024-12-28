@@ -10,15 +10,22 @@ from typing import Dict
 
 
 class PDFHandler:
-    def __init__(self, device: str = "kindle_scribe"):
+    def __init__(self, device: str = "kindle_scribe", reverse_order: bool = False, 
+                 combine_portraits: bool = True, add_buffer: bool = False):
         """
         Initialize PDFHandler with device-specific configuration.
         
         Args:
             device: Name of the device configuration to use.
+            reverse_order: Whether to reverse the order of combined portrait images.
+            combine_portraits: Whether to combine portrait images side by side.
+            add_buffer: Whether to add a blank page at the start to shift combined images.
         """
         self.logger = logging.getLogger(__name__)
         self.config = self._load_device_config(device)
+        self.reverse_order = reverse_order
+        self.combine_portraits = combine_portraits
+        self.add_buffer = add_buffer
         
         # Device dimensions.
         self.TARGET_WIDTH = self.config["width"]  # Device width in pixels.
@@ -106,7 +113,13 @@ class PDFHandler:
         return img_resized
 
     def _combine_portrait_images(self, img1: 'Image.Image', img2: 'Image.Image') -> 'Image.Image':
-        """Combine two portrait images side by side."""
+        """
+        Combine two portrait images side by side.
+        
+        Args:
+            img1: First image to combine.
+            img2: Second image to combine.
+        """
         # Create new blank image with white background.
         combined = Image.new('RGB', (self.TARGET_WIDTH, self.TARGET_HEIGHT), 'white')
 
@@ -119,12 +132,17 @@ class PDFHandler:
         y2 = (self.TARGET_HEIGHT - img2_resized.height) // 2
 
         # Calculate horizontal positions with padding.
-        x1 = self.PADDING  # Left padding for first image.
-        x2 = self.TARGET_WIDTH // 2 + self.PADDING  # Start second image at midpoint + padding.
+        x_left = self.PADDING  # Left padding for first image.
+        x_right = self.TARGET_WIDTH // 2 + self.PADDING  # Start second image at midpoint + padding.
 
-        # Paste images onto blank canvas.
-        combined.paste(img1_resized, (x1, y1))
-        combined.paste(img2_resized, (x2, y2))
+        # Default placement.
+        combined.paste(img1_resized, (x_left, y1))
+        combined.paste(img2_resized, (x_right, y2))
+
+        # Reverse order if specified.
+        if self.reverse_order:
+            combined.paste(img2_resized, (x_left, y2))
+            combined.paste(img1_resized, (x_right, y1))
 
         return combined
 
@@ -146,7 +164,7 @@ class PDFHandler:
         processed_images.append(self._save_temp_image(resized, output_path, i))
         return processed_images, i + 1
 
-    def _save_temp_image(self, img: 'Image.Image', output_path: str, index: int) -> bytes:
+    def _save_temp_image(self, img: 'Image.Image', output_path: str, index: int) -> None:
         """Save image to temporary file and return its bytes."""
         temp_path = f"{output_path}_temp_{index}.jpg"
         img.save(temp_path, "JPEG", quality=self.JPEG_QUALITY)
@@ -155,8 +173,21 @@ class PDFHandler:
         os.remove(temp_path)
         return image_bytes
 
-    def create_pdf(self, image_paths: list[str], output_path: str, combine_portraits: bool = True) -> bool:
-        """Create a PDF file from a list of image files in sequential order."""
+    def _create_blank_page(self) -> None:
+        """Create a blank white page with half the device width."""
+        # Create a blank image that's half the width of the device.
+        half_width = self.TARGET_WIDTH // 2
+        blank_image = Image.new('RGB', (half_width, self.TARGET_HEIGHT), 'white')
+        return self._save_temp_image(blank_image, "blank_page", 0)
+
+    def create_pdf(self, image_paths: list[str], output_path: str) -> bool:
+        """
+        Create a PDF file from a list of image files in sequential order.
+        
+        Args:
+            image_paths: List of paths to image files.
+            output_path: Path where the PDF will be saved.
+        """
         if not image_paths:
             self.logger.warning("No images provided for PDF creation.")
             return False
@@ -166,17 +197,34 @@ class PDFHandler:
             
             processed_images = []
             i = 0
+
+            # Handle first image with buffer if requested
+            if self.add_buffer and image_paths:
+                with Image.open(image_paths[0]) as img:
+                    # Create a new blank image
+                    combined = Image.new('RGB', (self.TARGET_WIDTH, self.TARGET_HEIGHT), 'white')
+                    # Resize the first actual image
+                    img_resized = self._resize_image(img)
+                    # Calculate position to paste the image (after the blank half)
+                    x = self.TARGET_WIDTH // 2 + self.PADDING if not self.reverse_order else self.PADDING
+                    y = (self.TARGET_HEIGHT - img_resized.height) // 2
+                    # Paste the image onto the right half
+                    combined.paste(img_resized, (x, y))
+                    processed_images.append(self._save_temp_image(combined, output_path, i))
+                    i += 1
+
+            # Process remaining images
             while i < len(image_paths):
                 try:
                     with Image.open(image_paths[i]) as img:
                         is_portrait = img.width < img.height
 
-                        if combine_portraits and is_portrait:
+                        if self.combine_portraits and is_portrait:
                             new_images, i = self._process_portrait_images(img, image_paths, i, output_path)
                             processed_images.extend(new_images)
                             continue
 
-                        # Handle landscape or when combining is disabled.
+                        # Handle landscape or when combining is disabled
                         with open(image_paths[i], 'rb') as img_file:
                             processed_images.append(img_file.read())
                         i += 1
@@ -185,7 +233,7 @@ class PDFHandler:
                     self.logger.error("Error processing image %s: %s.", image_paths[i], e)
                     return False
 
-            # Create the PDF.
+            # Create the PDF
             with open(output_path, 'wb') as pdf_file:
                 pdf_file.write(img2pdf.convert(processed_images))
             return True

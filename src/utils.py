@@ -162,4 +162,18 @@ Examples:
         help='Set the logging level (default: %(default)s)'
     )
 
+    parser.add_argument(
+        '--buffer',
+        action="store_true",
+        help="Add a blank page at the start to shift combined images.",
+        default=False
+    )
+
+    parser.add_argument(
+        '--reverse-img-order',
+        action='store_true',
+        help='Reverse the order of images when combining portrait pages.',
+        default=False
+    )
+
     return parser
