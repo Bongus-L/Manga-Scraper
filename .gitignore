@@ -23,6 +23,7 @@ build/
 # Logs
 logs/
 *.log
+*.txt
 
 # Downloads folder - contains manga PDFs and chapter files
 downloads/

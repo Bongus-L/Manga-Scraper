@@ -115,7 +115,6 @@ def cleanup_temp_files( image_paths: list[str]) -> None:
 
 def create_parser() -> argparse.ArgumentParser:
     """Create and return an ArgumentParser with improved help messages."""
-    # TODO: Allow device type arg.
     parser = argparse.ArgumentParser(
         description='Download manga from mangaread.org then convert to PDF.',
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -124,6 +123,7 @@ Examples:
   %(prog)s one-piece --start 1 --end 10
   %(prog)s naruto --start 50 --rotate
   %(prog)s bleach --log-level DEBUG
+  %(prog)s naruto --url-text urls.txt
         """
     )
 
@@ -131,6 +131,12 @@ Examples:
         'manga_name',
         type=str,
         help='Name of the manga as it appears in the URL (e.g., "one-piece", "naruto")'
+    )
+
+    parser.add_argument(
+        '--url-text',
+        type=str,
+        help='Path to text file containing manga chapter URLs'
     )
 
     parser.add_argument(
